@@ -212,8 +212,9 @@
         }
         if (!hasAccountDetails(current.rows)) continue;
         let record = accountRecord(current.title, current.rows, "investimenti");
-        const opened = current.rows.find(row => normalizedLabel(row[0] || "") === "data di apertura");
-        const openedValue = opened?.[1] || null;
+        const opened = current.rows.find(row => row.some(cell => normalizedLabel(cell) === "data di apertura"));
+        const openedIndex = opened ? opened.findIndex(cell => normalizedLabel(cell) === "data di apertura") : -1;
+        const openedValue = openedIndex >= 0 ? opened[openedIndex + 1] || null : null;
         const isRobo = /Robo-Advisor/i.test(current.title);
         const label = isRobo ? "Robo-Advisor" : "Conto di intermediazione";
         record = { ...record, title: openedValue ? label + " · apertura " + openedValue : label };
@@ -249,7 +250,7 @@
     const accountAndDeposit = [...bankAccounts, ...(savings ? [savings] : [])];
     const bankAverageTotal = sumAvailable(accountAndDeposit.map(a => a.mean));
     const bankMaximaUpperBound = sumAvailable(accountAndDeposit.map(a => a.max));
-    const inviteAmounts = [...new Set(bankAccounts.flatMap(a => [a.income.invites, a.income.rewards]).filter(v => typeof v === "number"))];
+    const inviteAmounts = [...new Set(bankAccounts.flatMap(a => [a.income.invites, a.income.rewards]).filter(v => typeof v === "number" && v !== 0))];
     const inviteRewardReported = inviteAmounts.length === 1 ? inviteAmounts[0] : null;
     const warnings=[];
     if(!crypto)warnings.push('La sezione cripto non è stata riconosciuta: verificare che il file sia un estratto consolidato Revolut completo.');
@@ -342,6 +343,7 @@
         accountRows += metric(account.title + " · saldo medio", account.mean, null, {copy:false});
         accountRows += metric(account.title + " · saldo massimo", account.max, null, {copy:false});
       }
+      accountRows += metric("Valore complessivo dei titoli al 31/12 (presente nel CSV)", null, null, {copy:false});
       tax.push(taxCard("Portafogli Revolut Securities · saldi del conto", "", "Questi sono saldi di conto, non il valore fiscale complessivo dei titoli detenuti al 31/12; il CSV non riporta un prospetto completo delle posizioni di fine anno.", accountRows));
 
       const direct = portfolio.find(account => !/^Robo-Advisor/i.test(account.title));
