@@ -94,9 +94,7 @@
     return `<tr><th>${esc(label)}</th><td><strong class="amount${missing?' missing-value':''}">${esc(display)}</strong>${source?`<span class="source">Fonte: ${esc(source)}</span>`:''}</td></tr>`;
   }
   function taxCard(title,status,body,rows){
-    const readyStatuses=["Dati estratti","Importi estratti"];
-    const statusClass=readyStatuses.includes(status)?"ready":status==="Da completare"?"missing":"check";
-    return `<article class="tax-card"><div class="tax-card-head"><h3>${esc(title)}</h3><span class="status ${statusClass}">${esc(status)}</span></div>${body?`<p>${esc(body)}</p>`:''}${rows?`<table class="data-table"><tbody>${rows}</tbody></table>`:''}</article>`;
+    return `<article class="tax-card"><h3>${esc(title)}</h3>${rows?`<table class="data-table"><tbody>${rows}</tbody></table>`:''}</article>`;
   }
   function renderReport(r){
     $('#report').hidden=false;$('#report-title').textContent=`Investimenti · ${r.period}`;$('#report-subtitle').textContent=`${r.filename} · ${r.rows.toLocaleString('it-IT')} righe lette`;
