@@ -351,8 +351,8 @@
     const direct = portfolio.find(account => !/^Robo-Advisor/i.test(account.title));
     if (direct && direct.sales.gross !== null && direct.sales.cost !== null) {
       const rows =
-        metric("Corrispettivi vendita azioni", direct.sales.gross, null) +
-        metric("Costo di acquisto delle azioni", direct.sales.cost, null);
+        metric("Corrispettivi lordi delle vendite · conto di intermediazione", direct.sales.gross, null) +
+        metric("Costo fiscale degli acquisti · conto di intermediazione", direct.sales.cost, null);
       tax.push(taxCard("Quadro T · cessione di azioni", "", "", rows));
     }
 
