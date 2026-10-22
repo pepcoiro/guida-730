@@ -299,97 +299,64 @@
     const portfolio = r.sections.filter(section => section.kind === "investimenti");
     const tax = [];
 
-    if (r.bankTotals && r.bankTotals.average !== null) {
-      const rows =
-        metric("Giacenza media aggregata conti e deposito", r.bankTotals.average, null, {copy:false}) +
-        metric("Somma dei saldi massimi dei singoli conti", r.bankTotals.maximaUpperBound, null, {copy:false});
-      tax.push(taxCard("Conti correnti e deposito · verifica soglie", "", "Valori aggregati per verificare le soglie dei conti esteri; non sono campi da copiare nel 730.", rows));
-    }
-
-    if (r.savings) {
-      const rows =
-        metric("Interessi lordi del deposito", r.savings.income.grossIncome, null, {copy:false}) +
-        metric("Imposte trattenute secondo Revolut", r.savings.income.withheld, null, {copy:false}) +
-        metric("Interessi netti dichiarati da Revolut", r.savings.income.netIncome, null, {copy:false});
-      tax.push(taxCard("Deposito · interessi già riportati nel riepilogo", "", "Il CSV indica una ritenuta: non duplicare l'importo senza verificare che sia una ritenuta italiana a titolo d'imposta.", rows));
-    }
-
     if (r.crypto) {
       const c = r.crypto;
       const wRows =
-        metric("Valore iniziale cripto", c.opening, null) +
-        metric("Valore finale delle posizioni al 31/12", c.endYearReported, null) +
+        metric("Valore iniziale delle cripto-attività", c.opening, null) +
+        metric("Valore finale delle cripto-attività al 31/12", c.endYearReported, null) +
         metric("Giorni di detenzione", c.days, null, {money:false});
       tax.push(taxCard("Quadro W · cripto-attività", "", "", wRows));
 
       const cryptoCostIncludingFees =
-        c.cost !== null && c.fees !== null ? Math.round((c.cost + c.fees + Number.EPSILON) * 100) / 100 : null;
+        c.cost !== null && c.fees !== null
+          ? Math.round((c.cost + c.fees + Number.EPSILON) * 100) / 100
+          : null;
       const tRows =
         metric("Corrispettivi delle cessioni cripto", c.gross, null) +
-        metric("Costo d'acquisto comprensivo dei costi indicati da Revolut", cryptoCostIncludingFees, null) +
-        metric("Risultato netto riepilogato da Revolut", c.pnl, null, {copy:false});
-      tax.push(taxCard("Quadro T · cessioni di cripto-attività", "", "Corrispettivi e costo sono dati del riepilogo Revolut; il risultato netto risulta negativo.", tRows));
+        metric("Costo d'acquisto e costi delle cessioni", cryptoCostIncludingFees, null);
+      tax.push(taxCard("Quadro T · cessioni di cripto-attività", "", "", tRows));
 
       if (c.learn !== null || c.staking !== null) {
         const rows =
-          metric("Learn & Earn dichiarato da Revolut", c.learn, null, {copy:false}) +
-          metric("Proventi da staking dichiarati da Revolut", c.staking, null, {copy:false});
-        tax.push(taxCard("Proventi cripto non sommati alle cessioni", "", "Il CSV distingue i proventi da Learn & Earn e staking dal risultato delle vendite; non li compenso automaticamente con la minusvalenza.", rows));
+          metric("Learn & Earn riportato da Revolut", c.learn, null, {copy:false}) +
+          metric("Staking riportato da Revolut", c.staking, null, {copy:false});
+        tax.push(taxCard("Proventi cripto separati dalle cessioni", "", "", rows));
       }
     }
 
-    if (portfolio.length) {
-      let accountRows = "";
-      for (const account of portfolio) {
-        accountRows += metric(account.title + " · saldo iniziale", account.opening, null, {copy:false});
-        accountRows += metric(account.title + " · saldo di chiusura", account.closing, null, {copy:false});
-        accountRows += metric(account.title + " · saldo medio", account.mean, null, {copy:false});
-        accountRows += metric(account.title + " · saldo massimo", account.max, null, {copy:false});
-      }
-      accountRows += metric("Valore complessivo dei titoli al 31/12 (presente nel CSV)", null, null, {copy:false});
-      tax.push(taxCard("Portafogli Revolut Securities · saldi del conto", "", "Questi sono saldi di conto, non il valore fiscale complessivo dei titoli detenuti al 31/12; il CSV non riporta un prospetto completo delle posizioni di fine anno.", accountRows));
+    const direct = portfolio.find(account => !/^Robo-Advisor/i.test(account.title));
+    if (direct && direct.sales.gross !== null && direct.sales.cost !== null) {
+      const rows =
+        metric("Corrispettivi vendita azioni", direct.sales.gross, null) +
+        metric("Costo di acquisto delle azioni", direct.sales.cost, null);
+      tax.push(taxCard("Quadro T · cessione di azioni", "", "", rows));
+    }
 
-      const direct = portfolio.find(account => !/^Robo-Advisor/i.test(account.title));
-      if (direct && direct.sales.gross !== null && direct.sales.cost !== null) {
-        const rows =
-          metric("Corrispettivi vendita azioni", direct.sales.gross, null) +
-          metric("Costo di acquisto", direct.sales.cost, null) +
-          metric("Risultato netto riportato", direct.sales.pnl, null, {copy:false});
-        tax.push(taxCard("Quadro T · vendita di strumenti finanziari", "", "Valori della vendita individuale riportata nel conto di intermediazione.", rows));
-      }
-
-      const robo = portfolio.filter(account => /^Robo-Advisor/i.test(account.title));
-      if (robo.length) {
-        const gross = r.totals.investmentGross;
-        const cost = r.totals.investmentCost;
-        const fees = r.totals.investmentFees;
-        const net = r.totals.investmentPnl;
-        const rows =
-          metric("Corrispettivi vendite Robo-Advisor aggregati", gross, null, {copy:false}) +
-          metric("Costi d'acquisto aggregati", cost, null, {copy:false}) +
-          metric("Commissioni e altri addebiti", fees, null, {copy:false}) +
-          metric("Risultato netto aggregato del broker", net, null, {copy:false});
-        tax.push(taxCard("Robo-Advisor · risultato da classificare", "", "Il CSV aggrega più ETF, inclusi fondi obbligazionari: non copio il risultato netto in un unico rigo fiscale senza il dettaglio fiscale dei fondi.", rows));
-      }
-
-      const dividendRows =
-        metric("Proventi lordi da dividendi/ETF esteri", r.totals.dividends, null) +
-        metric("Ritenute indicate da Revolut", r.totals.dividendTax, null, {copy:false});
-      tax.push(taxCard("Proventi da investimenti esteri · Quadro M da verificare", "", "Il totale è ricavato dai riepiloghi dei due portafogli Robo-Advisor. Il CSV indica zero ritenute ma non fornisce la ripartizione fiscale dei fondi obbligazionari.", dividendRows));
+    const robo = portfolio.filter(account => /^Robo-Advisor/i.test(account.title));
+    if (robo.length) {
+      const rows =
+        metric("Corrispettivi vendite ETF aggregati", r.totals.investmentGross, null, {copy:false}) +
+        metric("Costi d'acquisto ETF aggregati", r.totals.investmentCost, null, {copy:false}) +
+        metric("Risultato netto riepilogato da Revolut", r.totals.investmentPnl, null, {copy:false}) +
+        metric("Dividendi distribuiti dagli ETF", r.totals.dividends, null, {copy:false});
+      tax.push(taxCard("Robo-Advisor · importi da classificare per ETF", "", "", rows));
     }
 
     if (r.commodity) {
       const rows =
-        metric("Valore iniziale metalli preziosi", r.commodity.opening, null) +
-        metric("Valore finale metalli preziosi", r.commodity.closing, null) +
-        metric("Ricavi lordi da vendita", r.commodity.gross, null, {copy:false}) +
-        metric("Base imponibile riportata", r.commodity.basis, null, {copy:false}) +
-        metric("Profitti/perdite realizzati", r.commodity.pnl, null, {copy:false});
-      tax.push(taxCard("Quadro W · metalli preziosi detenuti tramite Revolut Ltd", "", "Valore finale tratto dal saldo del conto XAU; non risultano vendite di materie prime nel riepilogo 2025.", rows));
+        metric("Valore iniziale dei metalli preziosi", r.commodity.opening, null) +
+        metric("Valore finale dei metalli preziosi", r.commodity.closing, null) +
+        metric("Giorni di detenzione", r.commodity.days, null, {money:false});
+      tax.push(taxCard("Quadro W · metalli preziosi", "", "", rows));
     }
 
     if (r.inviteRewardReported !== null) {
-      tax.push(taxCard("Inviti e ricompense · da classificare", "", "Nel riepilogo compaiono lo stesso importo in due etichette; non li sommo per evitare un doppio conteggio.", metric("Importo segnalato da Revolut", r.inviteRewardReported, null, {copy:false})));
+      tax.push(taxCard(
+        "Inviti e ricompense · da classificare",
+        "",
+        "",
+        metric("Importo riportato da Revolut", r.inviteRewardReported, null, {copy:false})
+      ));
     }
 
     $('#tax-results').innerHTML = tax.join('') || '<p class="hint">Nessuna sezione fiscale riconosciuta: verifica il formato del CSV.</p>';
