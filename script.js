@@ -58,7 +58,10 @@
   }
   function number(value) {
     if (value == null) return null;
-    let s = String(value).trim().replace(/−/g, "-").replace(/[€$£\s\u00A0\u202F]/g, "");
+    let s = String(value).trim().replace(/−/g, "-");
+    // Il CSV Revolut contiene sequenze euro già decodificate male (ad es. â\x82¬).
+    // Eliminarle prima di estrarre cifre evita di leggere 42,95 € come 42,9582.
+    s = s.replace(/â[^\d,.-]{0,3}¬/g, "").replace(/[€$£\s\u00A0\u202F]/g, "");
     if (!s || s === "-" || s === "–") return null;
     let negative = /^\(.*\)$/.test(s);
     if (negative) s = s.slice(1, -1);
