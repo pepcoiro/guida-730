@@ -332,8 +332,8 @@
 
       if (c.learn !== null || c.staking !== null) {
         const rows =
-          metric("Learn & Earn riportato da Revolut", c.learn, null, {copy:false}) +
-          metric("Staking riportato da Revolut", c.staking, null, {copy:false});
+          metric("Learn & Earn riportato da Revolut", c.learn, null) +
+          metric("Staking riportato da Revolut", c.staking, null);
         tax.push(taxCard("Proventi cripto separati dalle cessioni", "", "", rows));
       }
     }
@@ -365,10 +365,10 @@
         return values.reduce((sum, value) => sum + Math.round((value + Number.EPSILON) * 100), 0) / 100;
       };
       const rows =
-        metric("Corrispettivi vendite ETF aggregati", roboSum("gross"), null, {copy:false}) +
-        metric("Costi d'acquisto ETF aggregati", roboSum("cost"), null, {copy:false}) +
-        metric("Risultato netto riepilogato da Revolut", roboSum("pnl"), null, {copy:false}) +
-        metric("Dividendi distribuiti dagli ETF", roboSum("dividends"), null, {copy:false});
+        metric("Corrispettivi vendite ETF aggregati", roboSum("gross"), null) +
+        metric("Costi d'acquisto ETF aggregati", roboSum("cost"), null) +
+        metric("Risultato netto riepilogato da Revolut", roboSum("pnl"), null) +
+        metric("Dividendi distribuiti dagli ETF", roboSum("dividends"), null);
       tax.push(taxCard("Robo-Advisor · importi da classificare per ETF", "", "", rows));
     }
 
@@ -385,7 +385,7 @@
         "Inviti e ricompense · da classificare",
         "",
         "",
-        metric("Importo riportato da Revolut", r.inviteRewardReported, null, {copy:false})
+        metric("Importo riportato da Revolut", r.inviteRewardReported, null)
       ));
     }
 
