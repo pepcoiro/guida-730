@@ -32,11 +32,11 @@
       s=s.replace(/\./g,"").replace(",",".");
     } else if(dot>=0){
       const parts=s.split(".");
-      if(parts.length>2 && parts.slice(1).every(part=>/^\\d{3}$/.test(part)) && /^\\d{1,3}$/.test(parts[0])) {
-        s=parts.join("");
-      } else if(parts.length===2 && parts[1]?.length===3 && /^[1-9]\\d*$/.test(parts[0])) {
-        s=parts.join("");
-      }
+      const groupedThousands=parts.length>1 &&
+        /^\d{1,3}$/.test(parts[0]) &&
+        parts.slice(1).every(part=>/^\d{3}$/.test(part)) &&
+        !/^0+$/.test(parts[0]);
+      if(groupedThousands) s=parts.join("");
     }
     const n=Number(s);
     return Number.isFinite(n)?(negative?-n:n):null;
@@ -118,8 +118,13 @@
     $('#feedback').textContent=`Lettura completata: ${report.rows.toLocaleString('it-IT')} righe. I dati fiscali richiedono verifica.`;
   }
   function exportCSV(){if(!state.report)return;const r=state.report;const rows=[['Sezione','Campo','Valore','Fonte / nota']];for(const s of r.sections){rows.push([s.title,'Istituto',s.institution||'', 'Dettagli del conto']);for(const [label,val,src] of [['Saldo medio',s.mean,'Valore del deposito'],['Saldo massimo',s.max,'Valore del deposito'],['Saldo di chiusura',s.closing,'Valore del deposito'],['Interessi lordi',s.income.grossIncome??s.income.grossInterest,'Riepilogo interessi'],['Imposte trattenute',s.income.withheld,'Riepilogo interessi'],['Dividendi lordi',s.income.dividends,'Riepilogo dividendi'],['Ritenuta estera sui dividendi',s.income.dividendTax,'Riepilogo dividendi'],['Ricavo lordo vendite',s.sales.gross,'Riepilogo vendite'],['Costo acquisti',s.sales.cost,'Riepilogo vendite'],['P/L netto',s.sales.pnl,'Riepilogo vendite']])if(val!==null&&val!==undefined)rows.push([s.title,label,val,src]);}if(r.crypto)for(const [label,val] of [['Totale riepilogo fine anno',r.crypto.endYearReported],['Saldo medio',r.crypto.mean],['Saldo massimo',r.crypto.max],['Ricavi vendite',r.crypto.gross],['Costo acquisti',r.crypto.cost],['Commissioni',r.crypto.fees],['P/L netto',r.crypto.pnl],['Learn & Earn',r.crypto.learn],['Staking',r.crypto.staking]])if(val!==null&&val!==undefined)rows.push(['Crypto',label,val,'Crypto Riepiloghi']);const safeCell=v=>{
-      let s=String(v??"");
-      if(/^[\\s]*[=+@]/.test(s)||(/^[\\s]*-/.test(s)&&!/^\\s*-?\\d+(?:[.,]\\d+)?\\s*$/.test(s)))s="'"+s;
+      let s;
+      if(typeof v==="number" && Number.isFinite(v)) {
+        s=new Intl.NumberFormat("it-IT",{useGrouping:false,maximumFractionDigits:12}).format(v);
+      } else {
+        s=String(v??"");
+        if(/^\\s*[=+@-]/.test(s)) s="'"+s;
+      }
       return '"'+s.replace(/"/g,'""')+'"';
     };
     const csv=rows.map(row=>row.map(safeCell).join(';')).join('\r\n');download(`guida-730-${r.period}.csv`,'\ufeff'+csv,'text/csv;charset=utf-8');}
