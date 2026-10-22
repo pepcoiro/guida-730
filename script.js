@@ -358,11 +358,17 @@
 
     const robo = portfolio.filter(account => /^Robo-Advisor/i.test(account.title));
     if (robo.length) {
+      const roboSum = key => {
+        const values = robo.map(account => key === "dividends" ? account.income.dividends : account.sales[key])
+          .filter(value => typeof value === "number" && Number.isFinite(value));
+        if (!values.length) return null;
+        return values.reduce((sum, value) => sum + Math.round((value + Number.EPSILON) * 100), 0) / 100;
+      };
       const rows =
-        metric("Corrispettivi vendite ETF aggregati", r.totals.investmentGross, null, {copy:false}) +
-        metric("Costi d'acquisto ETF aggregati", r.totals.investmentCost, null, {copy:false}) +
-        metric("Risultato netto riepilogato da Revolut", r.totals.investmentPnl, null, {copy:false}) +
-        metric("Dividendi distribuiti dagli ETF", r.totals.dividends, null, {copy:false});
+        metric("Corrispettivi vendite ETF aggregati", roboSum("gross"), null, {copy:false}) +
+        metric("Costi d'acquisto ETF aggregati", roboSum("cost"), null, {copy:false}) +
+        metric("Risultato netto riepilogato da Revolut", roboSum("pnl"), null, {copy:false}) +
+        metric("Dividendi distribuiti dagli ETF", roboSum("dividends"), null, {copy:false});
       tax.push(taxCard("Robo-Advisor · importi da classificare per ETF", "", "", rows));
     }
 
