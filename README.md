@@ -1,43 +1,42 @@
-# Calcolatore tasse
+# Guida 730
 
-Calcolatore tasse è una webapp che analizza il CSV annuale consolidato di Revolut per individuare i dati relativi agli investimenti e aiutare l’utente a capire quali importi possono servire per la dichiarazione dei redditi italiana.
+Guida 730 è una webapp che analizza il CSV annuale consolidato di Revolut per individuare i dati relativi agli investimenti utili alla dichiarazione dei redditi italiana.
 
-## A cosa serve
+## Scopo
 
-L’obiettivo è ridurre il lavoro manuale necessario per passare dall’estratto Revolut ai dati utili per il modello 730. L’utente carica il CSV e riceve un riepilogo dei dati riconosciuti, organizzati per tipologia di investimento e, quando determinabile, collegati al quadro fiscale pertinente.
+L’utente carica il CSV e riceve un report dei dati riconosciuti, organizzati per tipologia di investimento e collegati ai quadri fiscali pertinenti quando è possibile determinarli.
 
-La webapp si concentra esclusivamente su:
+L’analisi riguarda esclusivamente:
 
 - azioni;
 - ETF;
 - criptovalute;
-- altri strumenti e prodotti d’investimento, inclusi quelli presenti nel rendiconto Revolut.
+- altri strumenti e prodotti d’investimento presenti nel rendiconto Revolut.
 
-Conti correnti, spese quotidiane e altre operazioni non legate agli investimenti non sono l’obiettivo dell’analisi.
+Conti correnti, spese quotidiane e operazioni non legate agli investimenti sono fuori dall’obiettivo della webapp.
 
-## Come funziona
+## Funzionamento previsto
 
-1. L’utente carica il CSV annuale consolidato esportato da Revolut.
-2. La webapp legge il file e individua le sezioni relative agli investimenti.
-3. Estrae e organizza i dati riconosciuti, evitando di sommare riepiloghi che potrebbero riferirsi alle stesse operazioni o a prodotti diversi.
-4. Mostra i risultati utili alla dichiarazione, distinguendo i valori letti dal documento da quelli che richiedono ulteriori verifiche.
+1. Caricare il CSV annuale consolidato esportato da Revolut.
+2. Individuare le sezioni del documento relative agli investimenti.
+3. Estrarre e organizzare i dati riconosciuti senza sommare indiscriminatamente riepiloghi di prodotti diversi o potenzialmente duplicati.
+4. Mostrare quali dati possono servire per la dichiarazione e quali richiedono una verifica.
+5. Guidare l’utente verso gli importi e i campi dei quadri fiscali pertinenti, con valori copiabili quando il calcolo è stato determinato.
 
-## Obiettivo del progetto
+## Obiettivo
 
-Il risultato desiderato non è un semplice riepilogo dell’estratto conto: è una guida operativa che indichi, per ciascun dato fiscale individuato, **quale importo utilizzare e in quale quadro o campo della dichiarazione riportarlo**, con la possibilità di copiare il valore.
+La webapp non deve limitarsi a riassumere l’estratto conto. L’obiettivo è indicare all’utente quali importi riportare nei quadri e nei campi della dichiarazione dei redditi, sulla base delle operazioni e delle regole fiscali applicabili.
 
-Gli importi devono essere ricostruiti in base alla natura dello strumento e alle regole fiscali applicabili. Un valore riportato dal broker, come il profitto o la perdita netta, non è automaticamente uguale all’importo da dichiarare.
+I valori del broker — per esempio profitto, perdita o controvalore delle vendite — non devono essere considerati automaticamente equivalenti agli importi fiscalmente dichiarabili.
 
-## Stato e limiti
+## Stato del progetto
 
-Il progetto è in sviluppo. Il riconoscimento dei dati dal CSV non garantisce, da solo, che ogni importo sia già fiscalmente definitivo o che tutti i quadri applicabili siano stati determinati. I casi ambigui devono essere segnalati, non trasformati in valori certi.
+Il progetto è in sviluppo. Il riconoscimento di un valore nel CSV non significa necessariamente che l’importo sia già pronto per la dichiarazione. I casi ambigui e le informazioni mancanti devono essere segnalati chiaramente, senza presentare stime come risultati fiscali certi.
 
-Prima di utilizzare i risultati per presentare una dichiarazione, è necessario verificarli rispetto alle istruzioni ufficiali dell’Agenzia delle Entrate e alla situazione fiscale personale.
+I risultati devono essere verificati rispetto alle istruzioni ufficiali dell’Agenzia delle Entrate e alla situazione fiscale personale prima di essere utilizzati per presentare la dichiarazione.
 
-## Privacy
+## Privacy e tecnologie
 
-L’analisi del CSV è progettata per avvenire direttamente nel browser, senza caricare il documento su un server dell’applicazione.
+L’analisi del CSV è progettata per avvenire direttamente nel browser, senza inviare il documento a un server dell’applicazione.
 
-## Tecnologie
-
-Webapp statica realizzata con HTML, CSS e JavaScript, senza framework obbligatori.
+La webapp è realizzata con HTML, CSS e JavaScript.
