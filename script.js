@@ -54,7 +54,21 @@
     return rows.map(current => current.map(cleanText));
   }
   function cleanText(value) {
-    return String(value ?? "").replace(/^\uFEFF/, "").trim();
+    return String(value ?? "")
+      .replace(/^\uFEFF/, "")
+      .replace(/â\x82¬/g, "€")
+      .replace(/Ã\u00A0/g, "à")
+      .replace(/Ã¨/g, "è")
+      .replace(/Ã©/g, "é")
+      .replace(/Ã¬/g, "ì")
+      .replace(/Ã²/g, "ò")
+      .replace(/Ã¹/g, "ù")
+      .replace(/Ãˆ/g, "È")
+      .replace(/Ã‰/g, "É")
+      .replace(/ÃŒ/g, "Ì")
+      .replace(/Ã’/g, "Ò")
+      .replace(/Ã™/g, "Ù")
+      .trim();
   }
   function number(value) {
     if (value == null) return null;
