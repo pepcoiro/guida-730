@@ -4,52 +4,118 @@
   const state = { report:null };
   const fmt = n => new Intl.NumberFormat("it-IT", {minimumFractionDigits:2, maximumFractionDigits:2}).format(n);
   const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  function csvRows(text) {
-    const rows=[]; let row=[], cell="", quoted=false;
-    for(let i=0;i<text.length;i++) { const c=text[i],n=text[i+1];
-      if(c==='"' && quoted && n==='"'){cell+='"';i++;}
-      else if(c==='"') quoted=!quoted;
-      else if(c===',' && !quoted){row.push(cell);cell="";}
-      else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&n==='\n')i++;row.push(cell);if(row.some(x=>x.trim()))rows.push(row);row=[];cell="";}
-      else cell+=c;
+  function detectDelimiter(text) {
+    const lines = String(text).split(/\r\n|\n|\r/).filter(line => line.trim()).slice(0, 40);
+    const candidates = [",", ";", "\t"];
+    let best = ",", bestScore = -Infinity;
+    for (const delimiter of candidates) {
+      const counts = [];
+      for (const line of lines) {
+        let quoted = false, count = 0;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"' && quoted && line[i + 1] === '"') i++;
+          else if (c === '"') quoted = !quoted;
+          else if (c === delimiter && !quoted) count++;
+        }
+        if (count > 0) counts.push(count);
+      }
+      if (!counts.length) continue;
+      const frequency = new Map();
+      for (const count of counts) frequency.set(count, (frequency.get(count) || 0) + 1);
+      const modeEntry = [...frequency.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0];
+      const consistency = modeEntry[1] / counts.length;
+      const score = consistency * 100 + Math.log2(modeEntry[0] + 1) * 5 + Math.log2(counts.length + 1);
+      if (score > bestScore) { bestScore = score; best = delimiter; }
     }
-    if(cell.length||row.length){row.push(cell);if(row.some(x=>x.trim()))rows.push(row);}
-    return rows.map(r=>r.map(cleanText));
+    return best;
   }
-  function cleanText(s){return String(s??"").replace(/^\\uFEFF/,"").trim();}
-  function number(v){
-    if(v==null)return null;
-    let s=String(v).trim().replace(/−/g,"-").replace(/[€$£\s]/g,"");
-    if(!s||s==="-"||s==="–")return null;
-    const negative=/^\(.*\)$/.test(s);
-    if(negative)s=s.slice(1,-1);
-    s=s.replace(/[^0-9,.-]/g,"");
-    if(!s||s==="-"||s===".")return null;
-    const comma=s.lastIndexOf(","), dot=s.lastIndexOf(".");
-    if(comma>=0&&dot>=0){
-      s=comma>dot?s.replace(/\./g,"").replace(",","."):s.replace(/,/g,"");
-    } else if(comma>=0){
-      s=s.replace(/\./g,"").replace(",",".");
-    } else if(dot>=0){
-      const parts=s.split(".");
-      const groupedThousands=parts.length>1 &&
-        /^\d{1,3}$/.test(parts[0]) &&
-        parts.slice(1).every(part=>/^\d{3}$/.test(part)) &&
-        !/^0+$/.test(parts[0]);
-      if(groupedThousands) s=parts.join("");
+  function csvRows(text) {
+    const delimiter = detectDelimiter(text);
+    const rows = [];
+    let row = [], cell = "", quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i], next = text[i + 1];
+      if (c === '"' && quoted && next === '"') { cell += '"'; i++; }
+      else if (c === '"') quoted = !quoted;
+      else if (c === delimiter && !quoted) { row.push(cell); cell = ""; }
+      else if ((c === "\n" || c === "\r") && !quoted) {
+        if (c === "\r" && next === "\n") i++;
+        row.push(cell);
+        if (row.some(value => value.trim())) rows.push(row);
+        row = []; cell = "";
+      } else cell += c;
     }
-    const n=Number(s);
-    return Number.isFinite(n)?(negative?-n:n):null;
+    if (quoted) throw new Error("CSV non valido: virgolette non bilanciate.");
+    if (cell.length || row.length) {
+      row.push(cell);
+      if (row.some(value => value.trim())) rows.push(row);
+    }
+    return rows.map(current => current.map(cleanText));
+  }
+  function cleanText(value) {
+    return String(value ?? "").replace(/^\uFEFF/, "").trim();
+  }
+  function number(value) {
+    if (value == null) return null;
+    let s = String(value).trim().replace(/−/g, "-").replace(/[€$£\s\u00A0\u202F]/g, "");
+    if (!s || s === "-" || s === "–") return null;
+    let negative = /^\(.*\)$/.test(s);
+    if (negative) s = s.slice(1, -1);
+    if (s.startsWith("-")) { negative = !negative; s = s.slice(1); }
+    s = s.replace(/[^0-9,.-]/g, "").replace(/-/g, "");
+    if (!s || !/[0-9]/.test(s)) return null;
+    const commaCount = (s.match(/,/g) || []).length;
+    const dotCount = (s.match(/\./g) || []).length;
+    const lastComma = s.lastIndexOf(","), lastDot = s.lastIndexOf(".");
+    if (commaCount && dotCount) {
+      const decimalSeparator = lastComma > lastDot ? "," : ".";
+      const groupingSeparator = decimalSeparator === "," ? "." : ",";
+      s = s.split(groupingSeparator).join("");
+      const at = s.lastIndexOf(decimalSeparator);
+      s = s.slice(0, at).split(decimalSeparator).join("") + "." + s.slice(at + 1);
+    } else if (commaCount || dotCount) {
+      const separator = commaCount ? "," : ".";
+      const parts = s.split(separator);
+      const tail = parts[parts.length - 1];
+      const groupedThousands = parts.length > 2 && parts.slice(1).every(part => /^\d{3}$/.test(part));
+      const singleThousandsGroup = parts.length === 2 && /^\d{1,3}$/.test(parts[0]) &&
+        /^\d{3}$/.test(tail) && !/^0+$/.test(parts[0]);
+      if (groupedThousands || singleThousandsGroup) s = parts.join("");
+      else {
+        const at = s.lastIndexOf(separator);
+        s = s.slice(0, at).split(separator).join("") + "." + s.slice(at + 1);
+      }
+    }
+    const result = Number(s);
+    return Number.isFinite(result) ? (negative ? -Math.abs(result) : result) : null;
+  }
+  function normalizedLabel(value) {
+    return cleanText(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("it").replace(/\s+/g, " ");
+  }
+  function rowPair(rows, labels) {
+    const expected = (Array.isArray(labels) ? labels : [labels]).map(normalizedLabel);
+    const matches = [];
+    for (const row of rows) {
+      const index = row.findIndex(cell => expected.includes(normalizedLabel(cell)));
+      if (index < 0 || index + 1 >= row.length) continue;
+      const raw = row[index + 1];
+      const value = number(raw);
+      if (value !== null) matches.push({ value, raw, row });
+    }
+    const uniqueValues = [...new Set(matches.map(match => match.value))];
+    if (uniqueValues.length > 1) return { value: null, ambiguous: true, values: uniqueValues, row: matches[0].row };
+    return matches.length ? { ...matches[0], ambiguous: false } : null;
   }
   function valueLabel(rows,label,within){for(const r of rows){if(within&&!within(r))continue;const i=r.findIndex(x=>x.toLocaleLowerCase('it')===label.toLocaleLowerCase('it'));if(i>=0){const v=number(r[i+1]);if(v!==null)return v;}}return null;}
   function rowPair(rows,label){for(const r of rows){const i=r.findIndex(x=>x.toLocaleLowerCase('it')===label.toLocaleLowerCase('it'));if(i>=0){const raw=r[i+1];const val=number(raw);if(val!==null)return {value:val,raw:raw,row:r};}}return null;}
   function findSection(rows, regex, from=0){for(let i=from;i<rows.length;i++){if(regex.test(rows[i][0]||''))return i;}return -1;}
   function segment(rows,start,end,starts){const out=[];let current=null;for(let i=start;i<end;i++){const r=rows[i],first=r[0]||'';if(starts.some(re=>re.test(first))){if(current)out.push(current);current={title:first,rows:[r],start:i};}else if(current)current.rows.push(r);}if(current)out.push(current);return out;}
   function accountRecord(title,rows,kind){
-    const get=(label)=>rowPair(rows,label)?.value ?? null;
-    const mean = get("Saldo medio per l'intero periodo") ?? get("Saldo medio dell'intero anno");
-    const max = get("Saldo massimo");
-    const closing = get("Saldo di chiusura");
+    const get = (...labels) => rowPair(rows, labels)?.value ?? null;
+    const mean = get("Saldo medio per l'intero periodo", "Saldo medio dell'intero anno", "Saldo medio", "Giacenza media");
+    const max = get("Saldo massimo", "Valore massimo");
+    const closing = get("Saldo di chiusura", "Saldo finale", "Valore finale");
     const days = rows.map(r=>{const i=r.findIndex(x=>/Giorni di possesso/i.test(x));return i>=0?number(r[i+1]):null}).find(v=>v!==null) ?? null;
     const institution = rows.find(r=>/Nome dell'istituto finanziario/i.test(r[0]||''));
     const institutionName=institution?institution[1]:null;
@@ -66,7 +132,25 @@
     const invEnd=sectionEnd(invStart,[cryptoStart,commodityStart]);
     const cryptoEnd=sectionEnd(cryptoStart,[invStart,commodityStart]);
     const commodityEnd=sectionEnd(commodityStart,[invStart,cryptoStart]);
-    if(invStart>=0){const part=rows.slice(invStart,invEnd);const segs=segment(part,1,part.length,[/^Dettagli del conto di intermediazione/i,/^Robo-Advisor/i]);segs.forEach(s=>sections.push(accountRecord(s.title,s.rows,'investimenti')));}
+    if(invStart>=0){
+      const part = rows.slice(invStart, invEnd);
+      const segs = segment(part, 1, part.length, [/^Dettagli del conto di intermediazione/i, /^Robo-Advisor/i]);
+      const seenBlocks = new Set();
+      for (const segmentBlock of segs) {
+        const record = accountRecord(segmentBlock.title, segmentBlock.rows, "investimenti");
+        const values = [
+          record.mean, record.max, record.closing, record.days,
+          ...Object.values(record.income), ...Object.values(record.sales)
+        ];
+        // Le intestazioni generali possono ripetere il nome del prodotto senza contenere importi.
+        if (!values.some(value => typeof value === "number" && Number.isFinite(value))) continue;
+        // Scarta soltanto blocchi identici riga per riga; non unisce conti diversi con valori simili.
+        const signature = JSON.stringify(segmentBlock.rows);
+        if (seenBlocks.has(signature)) continue;
+        seenBlocks.add(signature);
+        sections.push(record);
+      }
+    }
     let crypto=null;
     if(cryptoStart>=0){const cr=rows.slice(cryptoStart,cryptoEnd);const pick=(label)=>rowPair(cr,label)?.value??null;
       const holdStart=cr.findIndex(r=>/Riepilogo delle posizioni di fine anno/i.test(r[0]||''));let holdings=[];if(holdStart>=0){for(let i=holdStart+2;i<cr.length;i++){const r=cr[i];if(/^(Totale|Valore del deposito|[-]+)$/i.test(r[0]||''))break;if(r.length>=3&&r[0]&&!/Descrizione e simbolo/i.test(r[0])){const val=r.length>3?number(r[3]):null;if(val!==null)holdings.push({asset:r[0],units:r[1],unitPrice:r[2],value:val});}}}
@@ -87,7 +171,23 @@
     warnings.push('Gli importi sono estratti dal CSV e formattati senza attribuire automaticamente una valuta fiscale. Verifica la valuta originaria e le istruzioni ufficiali dell’anno d’imposta prima di usarli nella dichiarazione.');
     return {filename,rows:rows.length,sections,crypto,commodity,totals:{dividends:divs,investmentPnl:sales},warnings,period:detectPeriod(rows,filename)};
   }
-  function detectPeriod(rows,filename){const m=filename.match(/(20\d{2})-01-01_(20\d{2})-12-31/);if(m)return m[1]===m[2]?m[1]:`${m[1]}–${m[2]}`;for(const r of rows){const s=r.join(' ');const x=s.match(/(20\d{2})/);if(x)return x[1];}return 'non determinato';}
+  function detectPeriod(rows, filename) {
+    const name = String(filename || "");
+    let match = name.match(/(20\d{2})-01-01[_-](20\d{2})-12-31/);
+    if (match) return match[1] === match[2] ? match[1] : match[1] + "–" + match[2];
+    match = name.match(/(?:anno|annual|fiscal|periodo|period)[^0-9]{0,20}(20\d{2})/i);
+    if (match) return match[1];
+    match = name.match(/(?:^|[^0-9])(20\d{2})(?:[^0-9]|$)/);
+    if (match) return match[1];
+    const preamble = [];
+    for (const row of rows) {
+      const line = row.join(" ");
+      if (/Investment Services Riepiloghi|Crypto Riepiloghi|Materia prima Riepiloghi/i.test(line)) break;
+      if (/periodo|period|anno fiscale|fiscal year|dal |from |al |to /i.test(line)) preamble.push(line);
+    }
+    const explicitYears = [...new Set(preamble.flatMap(line => line.match(/\b20\d{2}\b/g) || []))];
+    return explicitYears.length === 1 ? explicitYears[0] : "non determinato";
+  }
   function metric(label,val,source,opts={}){
     const missing=val===null||val===undefined||val==="";
     const display=missing?"Non trovato nel CSV":(opts.money===false?String(val):fmt(Number(val)));
