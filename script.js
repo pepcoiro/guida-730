@@ -62,7 +62,10 @@
     const rows=csvRows(text); if(rows.length<10)throw new Error('Il CSV è troppo corto o non è leggibile.');
     const sections=[];
     const invStart=findSection(rows,/Investment Services Riepiloghi/i), cryptoStart=findSection(rows,/Crypto Riepiloghi/i), commodityStart=findSection(rows,/Materia prima Riepiloghi/i);
-    const invEnd=cryptoStart>0?cryptoStart:rows.length, cryptoEnd=commodityStart>0?commodityStart:rows.length;
+    const sectionEnd=(start,starts)=>starts.filter(i=>i>=0&&i>start).sort((a,b)=>a-b)[0]??rows.length;
+    const invEnd=sectionEnd(invStart,[cryptoStart,commodityStart]);
+    const cryptoEnd=sectionEnd(cryptoStart,[invStart,commodityStart]);
+    const commodityEnd=sectionEnd(commodityStart,[invStart,cryptoStart]);
     if(invStart>=0){const part=rows.slice(invStart,invEnd);const segs=segment(part,1,part.length,[/^Dettagli del conto di intermediazione/i,/^Robo-Advisor/i]);segs.forEach(s=>sections.push(accountRecord(s.title,s.rows,'investimenti')));}
     let crypto=null;
     if(cryptoStart>=0){const cr=rows.slice(cryptoStart,cryptoEnd);const pick=(label)=>rowPair(cr,label)?.value??null;
@@ -72,7 +75,7 @@
       crypto={endYearReported,gross:pick('Valore lordo delle vendite'),cost:pick("Costo dell'acquisto"),fees:pick('Commissioni e altri addebiti'),pnl:pick('Plusvalenze al netto delle imposte'),learn:pick('Entrate da attività su Learn & Earn'),staking:pick('Reddito da staking'),mean:pick("Saldo medio per l'intero periodo"),max:pick('Saldo massimo'),closing:pick('Saldo di chiusura'),days:cr.map(r=>{const i=r.findIndex(x=>/Giorni di possesso/i.test(x));return i>=0?number(r[i+1]):null}).find(v=>v!==null)??null,institution:(cr.find(r=>/Nome dell'istituto finanziario/i.test(r[0]||''))||[])[1]||null,address:(cr.find(r=>/^Indirizzo e paese$/i.test(r[0]||''))||[])[1]||null,holdings,rows:cr};
     }
     let commodity=null;
-    if(commodityStart>=0){const cr=rows.slice(commodityStart);commodity={gross:valueLabel(cr,'Ricavo lordo'),basis:valueLabel(cr,'Base imponibile'),pnl:valueLabel(cr,'Profitti e perdite lordi realizzati'),rows:cr};}
+    if(commodityStart>=0){const cr=rows.slice(commodityStart,commodityEnd);commodity={gross:valueLabel(cr,'Ricavo lordo'),basis:valueLabel(cr,'Base imponibile'),pnl:valueLabel(cr,'Profitti e perdite lordi realizzati'),rows:cr};}
     const divs=sections.filter(s=>s.kind==='investimenti').reduce((a,s)=>a+(s.income.dividends||0),0);
     const sales=sections.filter(s=>s.kind==='investimenti').reduce((a,s)=>a+(s.sales.pnl||0),0);
     const warnings=[];
