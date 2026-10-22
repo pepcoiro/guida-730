@@ -123,7 +123,7 @@
         s=new Intl.NumberFormat("it-IT",{useGrouping:false,maximumFractionDigits:12}).format(v);
       } else {
         s=String(v??"");
-        if(/^\\s*[=+@-]/.test(s)) s="'"+s;
+        if(/^\s*[=+@-]/.test(s)) s="'"+s;
       }
       return '"'+s.replace(/"/g,'""')+'"';
     };
