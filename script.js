@@ -159,8 +159,15 @@
     }
     let commodity=null;
     if(commodityStart>=0){const cr=rows.slice(commodityStart,commodityEnd);commodity={gross:valueLabel(cr,'Ricavo lordo'),basis:valueLabel(cr,'Base imponibile'),pnl:valueLabel(cr,'Profitti e perdite lordi realizzati'),rows:cr};}
-    const divs=sections.filter(s=>s.kind==='investimenti').reduce((a,s)=>a+(s.income.dividends||0),0);
-    const sales=sections.filter(s=>s.kind==='investimenti').reduce((a,s)=>a+(s.sales.pnl||0),0);
+    const investmentSections = sections.filter(s => s.kind === "investimenti");
+    const sumAvailable = values => {
+      const present = values.filter(value => typeof value === "number" && Number.isFinite(value));
+      if (!present.length) return null;
+      const cents = present.reduce((sum, value) => sum + Math.round((value + Number.EPSILON) * 100), 0);
+      return cents / 100;
+    };
+    const divs = sumAvailable(investmentSections.map(s => s.income.dividends));
+    const sales = sumAvailable(investmentSections.map(s => s.sales.pnl));
     const warnings=[];
     if(!crypto)warnings.push('La sezione cripto non è stata riconosciuta: verificare che il file sia un estratto consolidato Revolut completo.');
     if(sections.some(s=>s.kind==='investimenti'))warnings.push('Per gli investimenti esteri, il quadro W dipende dalla natura giuridica del rapporto, dal luogo di detenzione e dalla titolarità: il nome del broker da solo non basta a completare tutti i campi.');
@@ -190,7 +197,8 @@
   function metric(label,val,source,opts={}){
     const missing=val===null||val===undefined||val==="";
     const display=missing?"Non trovato nel CSV":(opts.money===false?String(val):fmt(Number(val)));
-    return `<tr><th>${esc(label)}</th><td><div class="value-line"><strong class="amount${missing?' missing-value':''}">${esc(display)}</strong>${!missing && typeof val === "number" ? `<button class="copy-button" type="button" data-copy="${esc(fmt(val))}" aria-label="Copia ${esc(label)}">Copia</button>` : ""}</div></td></tr>`;
+    const copiedValue = opts.money === false ? String(val) : fmt(Number(val));
+    return `<tr><th>${esc(label)}</th><td><div class="value-line"><strong class="amount${missing?' missing-value':''}">${esc(display)}</strong>${!missing && typeof val === "number" ? `<button class="copy-button" type="button" data-copy="${esc(copiedValue)}" aria-label="Copia ${esc(label)}">Copia</button>` : ""}</div></td></tr>`;
   }
   function taxCard(title,status,body,rows){
     return `<article class="tax-card"><h3>${esc(title)}</h3>${rows?`<table class="data-table"><tbody>${rows}</tbody></table>`:''}</article>`;
