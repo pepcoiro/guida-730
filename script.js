@@ -119,7 +119,19 @@
     const unique = [...new Set(found)];
     return unique.length === 1 ? unique[0] : null;
   }
-  function valueLabel(rows,label,within){for(const r of rows){if(within&&!within(r))continue;const i=r.findIndex(x=>x.toLocaleLowerCase('it')===label.toLocaleLowerCase('it'));if(i>=0){const v=number(r[i+1]);if(v!==null)return v;}}return null;}
+  function valueLabel(rows, label, within) {
+    const values = [];
+    const expected = normalizedLabel(label);
+    for (const row of rows) {
+      if (within && !within(row)) continue;
+      const index = row.findIndex(cell => normalizedLabel(cell) === expected);
+      if (index < 0 || index + 1 >= row.length) continue;
+      const value = number(row[index + 1]);
+      if (value !== null) values.push(value);
+    }
+    const unique = [...new Set(values)];
+    return unique.length === 1 ? unique[0] : null;
+  }
   function findSection(rows, regex, from=0){for(let i=from;i<rows.length;i++){if(regex.test(rows[i][0]||''))return i;}return -1;}
   function segment(rows,start,end,starts){const out=[];let current=null;for(let i=start;i<end;i++){const r=rows[i],first=r[0]||'';if(starts.some(re=>re.test(first))){if(current)out.push(current);current={title:first,rows:[r],start:i};}else if(current)current.rows.push(r);}if(current)out.push(current);return out;}
   function accountRecord(title,rows,kind){
@@ -165,7 +177,7 @@
     let crypto=null;
     if(cryptoStart>=0){const cr=rows.slice(cryptoStart,cryptoEnd);const pick=(label)=>rowPair(cr,label)?.value??null;
       const holdStart=cr.findIndex(r=>/Riepilogo delle posizioni di fine anno/i.test(r[0]||''));let holdings=[];if(holdStart>=0){for(let i=holdStart+2;i<cr.length;i++){const r=cr[i];if(/^(Totale|Valore del deposito|[-]+)$/i.test(r[0]||''))break;if(r.length>=3&&r[0]&&!/Descrizione e simbolo/i.test(r[0])){const val=r.length>3?number(r[3]):null;if(val!==null)holdings.push({asset:r[0],units:r[1],unitPrice:r[2],value:val});}}}
-      const endYearTotal=cr.find(r=>/^Totale$/i.test(r[0]||'') && cr.indexOf(r)>holdStart);
+      const endYearTotal = holdStart >= 0 ? cr.slice(holdStart + 1).find(r => /^Totale$/i.test(r[0] || "")) || null : null;
       const endYearReported=endYearTotal?endYearTotal.slice(1).map(number).find(v=>v!==null)??null:null;
       crypto={endYearReported,gross:pick('Valore lordo delle vendite'),cost:pick("Costo dell'acquisto"),fees:pick('Commissioni e altri addebiti'),pnl:pick('Plusvalenze al netto delle imposte'),learn:pick('Entrate da attività su Learn & Earn'),staking:pick('Reddito da staking'),mean:pick("Saldo medio per l'intero periodo"),max:pick('Saldo massimo'),closing:pick('Saldo di chiusura'),days:uniquePatternNumber(cr, /Giorni di possesso/i),institution:(cr.find(r=>/Nome dell'istituto finanziario/i.test(r[0]||''))||[])[1]||null,address:(cr.find(r=>/^Indirizzo e paese$/i.test(r[0]||''))||[])[1]||null,holdings,rows:cr};
     }
