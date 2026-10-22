@@ -338,6 +338,16 @@
       }
     }
 
+    if (portfolio.length) {
+      let rows = "";
+      for (const account of portfolio) {
+        rows += metric(account.title + " · valore iniziale riportato", account.opening, null);
+        rows += metric(account.title + " · valore finale riportato", account.closing, null);
+        rows += metric(account.title + " · giorni di possesso indicati da Revolut", account.days, null, {money:false});
+      }
+      tax.push(taxCard("Quadro W · portafogli finanziari Revolut Securities", "", "", rows));
+    }
+
     const direct = portfolio.find(account => !/^Robo-Advisor/i.test(account.title));
     if (direct && direct.sales.gross !== null && direct.sales.cost !== null) {
       const rows =
