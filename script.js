@@ -108,7 +108,6 @@
     return matches.length ? { ...matches[0], ambiguous: false } : null;
   }
   function valueLabel(rows,label,within){for(const r of rows){if(within&&!within(r))continue;const i=r.findIndex(x=>x.toLocaleLowerCase('it')===label.toLocaleLowerCase('it'));if(i>=0){const v=number(r[i+1]);if(v!==null)return v;}}return null;}
-  function rowPair(rows,label){for(const r of rows){const i=r.findIndex(x=>x.toLocaleLowerCase('it')===label.toLocaleLowerCase('it'));if(i>=0){const raw=r[i+1];const val=number(raw);if(val!==null)return {value:val,raw:raw,row:r};}}return null;}
   function findSection(rows, regex, from=0){for(let i=from;i<rows.length;i++){if(regex.test(rows[i][0]||''))return i;}return -1;}
   function segment(rows,start,end,starts){const out=[];let current=null;for(let i=start;i<end;i++){const r=rows[i],first=r[0]||'';if(starts.some(re=>re.test(first))){if(current)out.push(current);current={title:first,rows:[r],start:i};}else if(current)current.rows.push(r);}if(current)out.push(current);return out;}
   function accountRecord(title,rows,kind){
