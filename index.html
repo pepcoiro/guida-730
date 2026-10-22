@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Calcolatore tasse: analisi CSV degli investimenti Revolut.">
+  <meta name="description" content="Guida 730: organizza i dati del CSV Revolut da verificare per la dichiarazione.">
   <meta name="theme-color" content="#171717">
-  <title>Calcolatore tasse</title>
+  <title>Guida 730</title>
   <link rel="stylesheet" href="style.css">
   <script src="script.js" defer></script>
 </head>
 <body>
 <div class="shell">
-  <header class="header"><h1 class="brand">Calcolatore tasse</h1></header>
+  <header class="header"><h1 class="brand">Guida 730</h1></header>
   <main>
     <section class="panel upload-panel" id="upload-panel">
       <h2>Carica il CSV Revolut</h2>
@@ -26,9 +26,9 @@
         <div><h2 id="report-title">Analisi investimenti</h2><p id="report-subtitle" class="hint"></p></div>
         <div class="report-actions"><button id="export-report" class="button secondary" type="button">Esporta CSV</button><button id="new-analysis" class="button quiet" type="button">Nuovo file</button></div>
       </div>
-      <div id="summary-cards" class="summary-cards"></div>
+      
       <section class="panel"><h2>Quadri fiscali</h2><div id="tax-results" class="tax-results"></div></section>
-      <section class="panel"><h2>Dati estratti dagli investimenti</h2><div id="product-results" class="product-results"></div></section>
+      <section class="panel"><h2>Dati estratti dal CSV</h2><div id="product-results" class="product-results"></div></section>
       <section class="panel"><h2>Dati da verificare</h2><ul id="warnings" class="warnings"></ul></section>
     </section>
   </main>
